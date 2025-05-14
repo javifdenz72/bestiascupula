@@ -1,0 +1,63 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    color: #000000; /* Cambiado de blanco a negro */
+    padding: 20px;
+}
+
+input, select, button {
+    margin: 5px;
+    padding: 8px;
+    font-size: 14px;
+}
+
+button {
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    border: 1px solid #999;
+    padding: 8px;
+    text-align: center;
+    background-color: #fff;
+}
+
+th {
+    background-color: #ccc;
+}
+
+#listaAlmacenes button {
+    display: block;
+    margin: 5px 0;
+    padding: 8px 12px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+
+#listaAlmacenes button:hover {
+    background-color: #2980b9;
+}
+
+#crearAlmacen input {
+    width: 200px;
+}
+
+#formularioAgregar {
+    margin-bottom: 20px;
+}
+
+.categoria {
+    margin: 1em 0;
+    padding: 1em;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    background: #f9f9f9;
+}

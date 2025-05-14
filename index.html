@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestor de Almacenes - GTA Hub</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Gestión de Almacenes</h1>
+
+    <section id="crearAlmacen">
+        <input type="text" id="nombreAlmacen" placeholder="Nombre del almacén">
+        <button onclick="agregarAlmacen()">Crear almacén</button>
+    </section>
+
+    <section id="almacenes">
+        <h2>Almacenes disponibles</h2>
+        <div id="listaAlmacenes"></div>
+    </section>
+
+    <section id="seccionStock" style="display:none;">
+        <h2>Stock del almacén: <span id="nombreAlmacenActual"></span></h2>
+
+        <div id="formularioAgregar">
+            <select id="categoriaItem">
+                <option value="Objetos">Objetos</option>
+                <option value="Armas">Armas</option>
+                <option value="Drogas">Drogas</option>
+                <option value="Cargadores">Cargadores</option>
+            </select>
+            <input type="text" id="nombreItem" placeholder="Nombre del objeto/arma">
+            <input type="number" id="cantidadItem" placeholder="Cantidad">
+            <input type="number" id="precioItem" placeholder="Precio por unidad" step="0.01">
+            <button onclick="agregarItem()">Agregar al stock</button>
+        </div>
+
+        <div id="contenedorCategorias"></div>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
