@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestor de Stock - GTA Hub</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111 url('marca_agua.png') no-repeat center center fixed;
+      background-size: 50%;
+      padding: 20px;
+      color: #f0f0f0;
+    }
+    h1, h2 { margin-top: 0; }
+    .hidden { display: none; }
+    input, button, select { margin: 5px; padding: 8px; }
+    .property-btn, .tab-btn { margin: 5px; padding: 8px 12px; }
+    .property-section, .stock-entry {
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 8px;
+    }
+    button.edit-btn, button.delete-btn {
+      margin-left: 5px;
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Gestor de Stock - GTA Hub</h1>
+
+  <div id="loginScreen">
+    <input type="text" id="username" placeholder="Usuario">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="login()">Entrar</button>
+  </div>
+
+  <div id="mainPanel" class="hidden">
+    <div>
+      <input type="text" id="propertyName" placeholder="Nombre de propiedad">
+      <button onclick="createProperty()">Crear Propiedad</button>
+    </div>
+
+    <div id="propertiesList"></div>
+
+    <div id="propertyPanel" class="hidden">
+      <h2 id="selectedPropertyName"></h2>
+      <button class="tab-btn" onclick="showCategory('Objetos')">Objetos</button>
+      <button class="tab-btn" onclick="showCategory('Armas')">Armas</button>
+      <button class="tab-btn" onclick="showCategory('Drogas')">Drogas</button>
+      <button class="tab-btn" onclick="showCategory('Cargadores')">Cargadores</button>
+
+      <div id="categoryPanel"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDiiIRuj0tWFq40Gp_juhNbuKj8xgNjPMU",
+      authDomain: "cupula-bestias.firebaseapp.com",
+      databaseURL: "https://cupula-bestias-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "cupula-bestias",
+      storageBucket: "cupula-bestias.firebasestorage.app",
+      messagingSenderId: "644812298577",
+      appId: "1:644812298577:web:059c114b952ce613d41b70"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let propiedadActual = "";
+    let categoriaActual = "";
+
+    function login() {
+      const user = document.getElementById("username").value;
+      const pass = document.getElementById("password").value;
+      if (user === "cupula" && pass === "admin123") {
+        document.getElementById("loginScreen").classList.add("hidden");
+        document.getElementById("mainPanel").classList.remove("hidden");
+        cargarPropiedades();
+      } else {
+        alert("Usuario o contraseña incorrectos.");
+      }
+    }
+
+    function createProperty() {
+      const name = document.getElementById("propertyName").value.trim();
+      if (!name) return alert("Pon un nombre a la propiedad.");
+      const propRef = push(ref(db, 'propiedades/'));
+      set(propRef, { nombre: name });
+      document.getElementById("propertyName").value = "";
+    }
+
+    function cargarPropiedades() {
+      const listDiv = document.getElementById("propertiesList");
+      listDiv.innerHTML = "";
+      onValue(ref(db, 'propiedades/'), (snapshot) => {
+        listDiv.innerHTML = "";
+        snapshot.forEach((child) => {
+          const btn = document.createElement("button");
+          btn.textContent = child.val().nombre;
+          btn.className = "property-btn";
+          btn.onclick = () => openProperty(child.key, child.val().nombre);
+          listDiv.appendChild(btn);
+        });
+      });
+    }
+
+    function openProperty(id, name) {
+      propiedadActual = id;
+      document.getElementById("selectedPropertyName").textContent = `Propiedad: ${name}`;
+      document.getElementById("propertyPanel").classList.remove("hidden");
+      document.getElementById("categoryPanel").innerHTML = "";
+    }
+
+    function showCategory(categoria) {
+      categoriaActual = categoria;
+      const panel = document.getElementById("categoryPanel");
+      let html = `
+        <h3>${categoria}</h3>
+        <input type="text" id="itemName" placeholder="Nombre">
+        <input type="number" id="itemQuantity" placeholder="Cantidad">
+        <input type="number" id="itemPrice" placeholder="Precio por unidad">
+        <button onclick="addItem()">Agregar</button>
+        <div id="stockList"></div>
+      `;
+      panel.innerHTML = html;
+      loadStock();
+    }
+
+    function addItem() {
+      const name = document.getElementById("itemName").value.trim();
+      const quantity = parseInt(document.getElementById("itemQuantity").value);
+      const price = parseFloat(document.getElementById("itemPrice").value);
+      if (!name || isNaN(quantity) || isNaN(price)) return alert("Completa todos los campos.");
+      const itemRef = push(ref(db, `propiedades/${propiedadActual}/stock/${categoriaActual}`));
+      set(itemRef, { nombre: name, cantidad: quantity, precio: price });
+    }
+
+    function loadStock() {
+      const listDiv = document.getElementById("stockList");
+      onValue(ref(db, `propiedades/${propiedadActual}/stock/${categoriaActual}`), (snapshot) => {
+        listDiv.innerHTML = "";
+        snapshot.forEach((child) => {
+          const item = child.val();
+          const total = item.cantidad * item.precio;
+          const totalFormat = total >= 1_000_000 ? (total/1_000_000).toFixed(1)+'M' :
+                              total >= 1_000 ? (total/1_000).toFixed(0)+'K' : total;
+          const div = document.createElement("div");
+          div.className = "stock-entry";
+          div.innerHTML = `${item.nombre} | Cant: ${item.cantidad} | $${item.precio} c/u | Total: ${totalFormat}
+          <button class='edit-btn' onclick='editItem("${child.key}", ${item.cantidad})'>✏️</button>
+          <button class='delete-btn' onclick='deleteItem("${child.key}")'>❌</button>`;
+          listDiv.appendChild(div);
+        });
+      });
+    }
+
+    function editItem(key, cantidadActual) {
+      const nuevaCantidad = prompt("Nueva cantidad:", cantidadActual);
+      if (nuevaCantidad !== null) {
+        update(ref(db, `propiedades/${propiedadActual}/stock/${categoriaActual}/${key}`), { cantidad: parseInt(nuevaCantidad) });
+      }
+    }
+
+    function deleteItem(key) {
+      remove(ref(db, `propiedades/${propiedadActual}/stock/${categoriaActual}/${key}`));
+    }
+
+  </script>
+
+</body>
+</html>
