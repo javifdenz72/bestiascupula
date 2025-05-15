@@ -2,22 +2,57 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Gestor de Stock GTA</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestor de Stock GTA Hub</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    h2 {
+      margin-top: 30px;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      margin: 5px;
+      padding: 5px;
+    }
+    .property-btn {
+      margin: 3px;
+    }
+    .tab-btn {
+      margin-right: 5px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Gestión de Stock GTA</h1>
+  <h1>Gestor de Stock - GTA Hub</h1>
 
-  <input type="text" id="nombre" placeholder="Nombre del ítem" />
-  <input type="number" id="cantidad" placeholder="Cantidad" />
-  <button id="guardar">Guardar</button>
+  <div class="section">
+    <input type="text" id="newPropertyName" placeholder="Nombre de propiedad" />
+    <button onclick="createProperty()">Crear propiedad</button>
+  </div>
 
-  <h2>Stock actual</h2>
-  <ul id="lista"></ul>
+  <div id="propertiesList" class="section"></div>
 
-  <!-- Firebase SDK (módulos) -->
+  <div id="propertyPanel" class="section" style="display:none;">
+    <h2 id="selectedProperty"></h2>
+    <div>
+      <button class="tab-btn" onclick="showTab('Objetos')">Objetos</button>
+      <button class="tab-btn" onclick="showTab('Armas')">Armas</button>
+      <button class="tab-btn" onclick="showTab('Drogas')">Drogas</button>
+      <button class="tab-btn" onclick="showTab('Cargadores')">Cargadores</button>
+    </div>
+    <div id="tabContent" class="section"></div>
+  </div>
+
+  <!-- Firebase -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, doc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAK0n1tFu5oAsijJ4avndm1H_lODihueYI",
@@ -31,32 +66,89 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const db = getFirestore(app);
 
-    // Guardar datos en Firebase
-    document.getElementById("guardar").addEventListener("click", () => {
-      const nombre = document.getElementById("nombre").value.trim();
-      const cantidad = parseInt(document.getElementById("cantidad").value);
-      if (!nombre || isNaN(cantidad)) return alert("Completa todos los campos correctamente.");
-      set(ref(db, 'stock/' + nombre), {
-        nombre,
-        cantidad
+    let currentProperty = '';
+    let currentTab = '';
+
+    async function createProperty() {
+      const name = document.getElementById('newPropertyName').value.trim();
+      if (!name) return alert("Ingresa un nombre");
+      await setDoc(doc(db, "propiedades", name), {});
+      loadProperties();
+    }
+
+    async function loadProperties() {
+      const container = document.getElementById('propertiesList');
+      container.innerHTML = '<h2>Propiedades</h2>';
+      const snapshot = await getDocs(collection(db, "propiedades"));
+      snapshot.forEach(docSnap => {
+        const btn = document.createElement('button');
+        btn.innerText = docSnap.id;
+        btn.className = 'property-btn';
+        btn.onclick = () => selectProperty(docSnap.id);
+        container.appendChild(btn);
       });
-    });
+    }
 
-    // Leer datos en tiempo real
-    onValue(ref(db, 'stock'), (snapshot) => {
-      const data = snapshot.val();
-      const lista = document.getElementById("lista");
-      lista.innerHTML = "";
-      if (!data) return;
-      for (const clave in data) {
-        const item = data[clave];
-        const li = document.createElement("li");
-        li.textContent = `${item.nombre}: ${item.cantidad}`;
-        lista.appendChild(li);
-      }
-    });
+    function selectProperty(name) {
+      currentProperty = name;
+      document.getElementById('selectedProperty').innerText = name;
+      document.getElementById('propertyPanel').style.display = 'block';
+      showTab('Objetos');
+    }
+
+    function showTab(tab) {
+      currentTab = tab;
+      const content = document.getElementById('tabContent');
+      content.innerHTML = `
+        <h3>${tab}</h3>
+        <input type="text" id="itemName" placeholder="Nombre" />
+        <input type="number" id="itemQty" placeholder="Cantidad" />
+        <input type="number" id="itemPrice" placeholder="Precio unidad" />
+        <button onclick="saveItem()">Guardar</button>
+        <div id="itemList"></div>
+      `;
+      loadItems();
+    }
+
+    window.saveItem = async function () {
+      const name = document.getElementById('itemName').value.trim();
+      const qty = parseInt(document.getElementById('itemQty').value);
+      const price = parseFloat(document.getElementById('itemPrice').value);
+      if (!name || isNaN(qty) || isNaN(price)) return alert("Completa los campos correctamente");
+
+      const total = qty * price;
+
+      const ref = doc(db, "propiedades", currentProperty);
+      const subref = doc(collection(ref, currentTab));
+      await setDoc(subref, { nombre: name, cantidad: qty, precio: price, total });
+
+      loadItems();
+    }
+
+    async function loadItems() {
+      const ref = doc(db, "propiedades", currentProperty);
+      const sub = collection(ref, currentTab);
+      const snapshot = await getDocs(sub);
+      const list = document.getElementById('itemList');
+      list.innerHTML = '<ul>';
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        list.innerHTML += `<li><strong>${data.nombre}</strong>: ${data.cantidad} x $${formatPrice(data.precio)} = <strong>$${formatPrice(data.total)}</strong></li>`;
+      });
+      list.innerHTML += '</ul>';
+    }
+
+    function formatPrice(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+      return num;
+    }
+
+    window.createProperty = createProperty;
+    window.showTab = showTab;
+    loadProperties();
   </script>
 </body>
 </html>
